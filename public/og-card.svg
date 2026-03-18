@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff7ef" />
+      <stop offset="55%" stop-color="#f7f1e8" />
+      <stop offset="100%" stop-color="#edf6ef" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#bg)" />
+  <circle cx="1010" cy="122" r="110" fill="#d9ecf7" opacity="0.9" />
+  <circle cx="150" cy="520" r="170" fill="#f6d9c8" opacity="0.8" />
+  <rect x="70" y="72" width="1060" height="486" rx="34" fill="white" fill-opacity="0.7" stroke="white" stroke-opacity="0.9"/>
+  <text x="110" y="150" fill="#d97745" font-size="28" font-family="'Hiragino Sans', 'Yu Gothic', sans-serif" letter-spacing="5">OUCHI KONDATE NOTE</text>
+  <text x="110" y="255" fill="#1f2937" font-size="66" font-weight="700" font-family="'Hiragino Sans', 'Yu Gothic', sans-serif">予算から献立と</text>
+  <text x="110" y="338" fill="#1f2937" font-size="66" font-weight="700" font-family="'Hiragino Sans', 'Yu Gothic', sans-serif">買い物リストをまとめて作成</text>
+  <text x="110" y="408" fill="#455468" font-size="30" font-family="'Hiragino Sans', 'Yu Gothic', sans-serif">家庭向け / スマホで見やすい / 時短 / 節約 / 共有しやすい</text>
+  <text x="110" y="490" fill="#5c7c53" font-size="30" font-family="'Hiragino Sans', 'Yu Gothic', sans-serif">予算・人数・日数・家にある食材を入れるだけ</text>
+</svg>
