@@ -57,6 +57,10 @@ export interface PlannedDish {
   ingredients: Ingredient[];
   steps: string[];
   tags: string[];
+  moodLabels: string[];
+  satisfactionLabel: string;
+  easeLabel: string;
+  recommendationReason: string;
 }
 
 export interface DayPlan {

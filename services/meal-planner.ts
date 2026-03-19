@@ -1,6 +1,16 @@
 import { RECIPES } from "@/data/recipes";
-import { DayPlan, DishSlot, Ingredient, PantryItem, PlanResult, PlannedDish, PlannerInput, Recipe, ShoppingListItem } from "@/types";
 import { clamp, normalizeText, parsePantryInput } from "@/lib/utils";
+import {
+  DayPlan,
+  DishSlot,
+  Ingredient,
+  PantryItem,
+  PlanResult,
+  PlannedDish,
+  PlannerInput,
+  Recipe,
+  ShoppingListItem,
+} from "@/types";
 
 const SLOT_ORDER: DishSlot[] = ["main", "side", "soup"];
 
@@ -24,54 +34,217 @@ function toPlannedDish(recipe: Recipe, people: number): PlannedDish {
     ingredients: scaleIngredients(recipe.ingredients, multiplier),
     steps: recipe.steps,
     tags: recipe.tags,
+    moodLabels: getMoodLabels(recipe),
+    satisfactionLabel: getSatisfactionLabel(recipe),
+    easeLabel: getEaseLabel(recipe),
+    recommendationReason: "",
   };
+}
+
+function getMoodLabels(recipe: Recipe) {
+  const candidates = [
+    "がっつり",
+    "さっぱり",
+    "リッチ",
+    "家庭的",
+    "定番",
+    "野菜多め",
+    "子ども向け",
+    "大人向け",
+    "ご飯が進む",
+    "お酒に合う",
+    "和食",
+    "洋食",
+    "中華",
+  ];
+
+  return candidates.filter((tag) => recipe.tags.includes(tag)).slice(0, 3);
+}
+
+function getSatisfactionLabel(recipe: Recipe) {
+  const tags = recipe.tags;
+  if (tags.includes("がっつり") || tags.includes("リッチ") || tags.includes("ご飯が進む")) {
+    return "満足感 高め";
+  }
+  if (tags.includes("さっぱり") || tags.includes("ヘルシー") || tags.includes("野菜多め")) {
+    return "軽やか";
+  }
+  return "ほどよい満足感";
+}
+
+function getEaseLabel(recipe: Recipe) {
+  if (recipe.cookTimeMinutes <= 12 || recipe.tags.includes("時短")) return "手軽";
+  if (recipe.cookTimeMinutes <= 20) return "作りやすい";
+  return "少し丁寧";
+}
+
+function buildRecommendationReason(recipe: Recipe, preferences: string[]) {
+  const matched = getMoodLabels(recipe).filter((tag) =>
+    preferences.some((preference) => preference.includes(normalizeText(tag))),
+  );
+
+  if (matched.length > 0) {
+    return `${matched[0]}気分に寄せやすい主役です`;
+  }
+
+  if (recipe.tags.includes("家庭的")) return "家で食べたい安心感のある主菜です";
+  if (recipe.tags.includes("ご飯が進む")) return "ごはんが進みやすく満足感を出せます";
+  if (recipe.tags.includes("リッチ")) return "少し特別感が欲しい日に向いています";
+  return "今の条件で満足度と作りやすさのバランスが良い一皿です";
 }
 
 function recipeIncludesBlockedTerm(recipe: Recipe, blockedTerms: string[]) {
   if (blockedTerms.length === 0) return false;
-  const haystacks = [recipe.name, recipe.description, ...recipe.tags, ...recipe.ingredients.map((ingredient) => ingredient.name)].map(normalizeText);
-  return blockedTerms.some((blocked) => haystacks.some((value) => value.includes(blocked)));
+  const haystacks = [
+    recipe.name,
+    recipe.description,
+    ...recipe.tags,
+    ...recipe.ingredients.map((ingredient) => ingredient.name),
+  ].map(normalizeText);
+
+  return blockedTerms.some((blocked) =>
+    haystacks.some((value) => value.includes(blocked)),
+  );
 }
 
-function scoreRecipe(
-  recipe: Recipe,
-  usedIds: Set<string>,
-  preferences: string[],
-  ingredientUsage: Map<string, number>,
-  targetCost: number,
-  strategy: PlannerInput["strategy"],
-) {
-  const preferenceWeight = strategy === "preference" ? 5.5 : 3;
-  const reuseWeight = strategy === "budget" ? 1.1 : 0.8;
+function getMainIngredientGroup(recipe: Recipe) {
+  const tags = recipe.tags.map(normalizeText);
+  const name = normalizeText(recipe.name);
+
+  if (tags.some((tag) => tag.includes("魚料理")) || /(鮭|さば|魚)/.test(name)) return "fish";
+  if (tags.some((tag) => tag.includes("鶏肉料理"))) return "chicken";
+  if (tags.some((tag) => tag.includes("豚肉料理"))) return "pork";
+  if (tags.some((tag) => tag.includes("卵料理"))) return "egg";
+  if (tags.some((tag) => tag.includes("豆腐")) || /(豆腐|厚揚げ)/.test(name)) return "tofu";
+  if (tags.some((tag) => tag.includes("野菜中心料理"))) return "vegetable";
+  return "other";
+}
+
+function getCookMethod(recipe: Recipe) {
+  const name = recipe.name;
+  const tags = recipe.tags.map(normalizeText);
+
+  if (tags.some((tag) => tag.includes("丼もの"))) return "don";
+  if (tags.some((tag) => tag.includes("カレー系"))) return "curry";
+  if (recipe.slot === "soup") return "soup";
+  if (/炒/.test(name)) return "stir-fry";
+  if (/焼/.test(name)) return "grill";
+  if (/煮/.test(name)) return "simmer";
+  if (/(サラダ|和え)/.test(name)) return "salad";
+  return recipe.slot;
+}
+
+function getCuisine(recipe: Recipe) {
+  const tags = recipe.tags.map(normalizeText);
+  if (tags.some((tag) => tag.includes("和食"))) return "japanese";
+  if (tags.some((tag) => tag.includes("洋食") || tag.includes("洋風"))) return "western";
+  if (tags.some((tag) => tag.includes("中華"))) return "chinese";
+  return "home";
+}
+
+function getPreferenceHits(recipe: Recipe, preferences: string[]) {
+  const haystacks = [recipe.name, recipe.description, ...recipe.tags].map(normalizeText);
+  return preferences.reduce((hits, preference) => (
+    haystacks.some((value) => value.includes(preference)) ? hits + 1 : hits
+  ), 0);
+}
+
+function scoreMainRecipe({
+  recipe,
+  usedIds,
+  preferences,
+  ingredientUsage,
+  targetCost,
+  strategy,
+  previousIngredient,
+  previousMethod,
+  ingredientCounts,
+  methodCounts,
+}: {
+  recipe: Recipe;
+  usedIds: Set<string>;
+  preferences: string[];
+  ingredientUsage: Map<string, number>;
+  targetCost: number;
+  strategy: PlannerInput["strategy"];
+  previousIngredient: string | null;
+  previousMethod: string | null;
+  ingredientCounts: Map<string, number>;
+  methodCounts: Map<string, number>;
+}) {
+  const preferenceHits = getPreferenceHits(recipe, preferences);
+  const ingredientReuse = recipe.ingredients.reduce(
+    (score, ingredient) => score + (ingredientUsage.get(ingredient.id) ?? 0),
+    0,
+  );
+  const mainIngredient = getMainIngredientGroup(recipe);
+  const method = getCookMethod(recipe);
+  const budgetWeight = strategy === "budget" ? 3.4 : 1.6;
+  const budgetScore =
+    targetCost > 0 ? clamp(budgetWeight - recipe.estimatedCost / targetCost, -2.6, 2.4) : 0;
+
+  let score = preferenceHits * 6.4;
+  score += ingredientReuse * 0.45;
+  score += usedIds.has(recipe.id) ? -7 : 3.2;
+  score += (ingredientCounts.get(mainIngredient) ?? 0) * -2.8;
+  score += (methodCounts.get(method) ?? 0) * -1.9;
+  score += previousIngredient === mainIngredient ? -7.5 : 1.2;
+  score += previousMethod === method ? -5.5 : 0.8;
+  score += budgetScore;
+
+  if (strategy === "quick") {
+    score += clamp(4.2 - recipe.cookTimeMinutes / 7, -2.4, 4);
+  }
+
+  if (strategy === "preference") {
+    score += preferenceHits * 2.2;
+  }
+
+  return score;
+}
+
+function scoreCompanionRecipe({
+  recipe,
+  mainRecipe,
+  usedIds,
+  preferences,
+  ingredientUsage,
+  targetCost,
+  strategy,
+}: {
+  recipe: Recipe;
+  mainRecipe: Recipe;
+  usedIds: Set<string>;
+  preferences: string[];
+  ingredientUsage: Map<string, number>;
+  targetCost: number;
+  strategy: PlannerInput["strategy"];
+}) {
+  const preferenceHits = getPreferenceHits(recipe, preferences);
+  const ingredientReuse = recipe.ingredients.reduce(
+    (score, ingredient) => score + (ingredientUsage.get(ingredient.id) ?? 0),
+    0,
+  );
+  const sameCuisine = getCuisine(recipe) === getCuisine(mainRecipe) ? 2 : 0.6;
+  const budgetScore =
+    targetCost > 0 ? clamp(2.2 - recipe.estimatedCost / targetCost, -2, 2) : 0;
   const timeScore =
-    strategy === "quick" ? clamp(4 - recipe.cookTimeMinutes / 8, -2, 4) : 0;
-  const preferenceHits = recipe.tags.filter((tag) =>
-    preferences.some((preference) => normalizeText(tag).includes(preference)),
-  ).length;
-  const ingredientReuse = recipe.ingredients.reduce((score, ingredient) => score + (ingredientUsage.get(ingredient.id) ?? 0), 0);
-  const uniquenessBonus = usedIds.has(recipe.id) ? -4 : 4;
-  const budgetBias = strategy === "budget" ? 3.8 : 3;
-  const budgetScore = targetCost > 0 ? clamp(budgetBias - recipe.estimatedCost / targetCost, -3, 3) : 0;
-  return preferenceHits * preferenceWeight + ingredientReuse * reuseWeight + uniquenessBonus + budgetScore + timeScore;
+    strategy === "quick" ? clamp(3.6 - recipe.cookTimeMinutes / 6, -1.6, 3.5) : 0;
+
+  return (
+    preferenceHits * 3.2 +
+    ingredientReuse * 0.9 +
+    sameCuisine +
+    budgetScore +
+    timeScore +
+    (usedIds.has(recipe.id) ? -5 : 1.4)
+  );
 }
 
-function pickRecipe(
-  pool: Recipe[],
-  usedIds: Set<string>,
-  preferences: string[],
-  ingredientUsage: Map<string, number>,
-  targetCost: number,
-  strategy: PlannerInput["strategy"],
-) {
-  const available = pool.filter((recipe) => !usedIds.has(recipe.id));
-  const workingPool = available.length > 0 ? available : pool;
-
-  return [...workingPool].sort((left, right) => {
-    const scoreDiff =
-      scoreRecipe(right, usedIds, preferences, ingredientUsage, targetCost, strategy) -
-      scoreRecipe(left, usedIds, preferences, ingredientUsage, targetCost, strategy);
-
-    if (scoreDiff !== 0) return scoreDiff;
+function pickBestRecipe(pool: Recipe[], scoreFn: (recipe: Recipe) => number) {
+  return [...pool].sort((left, right) => {
+    const diff = scoreFn(right) - scoreFn(left);
+    if (diff !== 0) return diff;
     return left.estimatedCost - right.estimatedCost;
   })[0];
 }
@@ -109,7 +282,7 @@ function replaceToFitBudget(days: DayPlan[], pools: Record<DishSlot, Recipe[]>, 
     });
 
     if (!bestChange) {
-      warnings.push("最安候補まで調整しましたが、現在の条件では予算内に収まりませんでした。");
+      warnings.push("満足度を保てる範囲で最安候補まで調整しましたが、予算内には収まりませんでした。");
       break;
     }
 
@@ -195,7 +368,6 @@ export function generateMealPlan(input: PlannerInput): PlanResult {
   const strategy = input.strategy ?? "balanced";
   const blockedTerms = [...input.dislikes, ...input.allergies].map(normalizeText);
   const preferenceTerms = input.preferences.map(normalizeText);
-
   const filteredRecipes = RECIPES.filter((recipe) => !recipeIncludesBlockedTerm(recipe, blockedTerms));
 
   const pools = {
@@ -205,37 +377,92 @@ export function generateMealPlan(input: PlannerInput): PlanResult {
   };
 
   if (SLOT_ORDER.some((slot) => pools[slot].length === 0)) {
-    throw new Error("条件に合う献立候補が不足しています。苦手食材やアレルギー条件を見直してください。");
+    throw new Error("条件に合う献立候補が不足しています。条件を少しゆるめて再度お試しください。");
   }
 
   const usedIds = new Set<string>();
   const ingredientUsage = new Map<string, number>();
+  const mainIngredientCounts = new Map<string, number>();
+  const methodCounts = new Map<string, number>();
   const budgetPerDay = input.budget / input.days;
-  const slotTarget = {
-    main: budgetPerDay * (strategy === "budget" ? 0.55 : 0.62),
-    side: budgetPerDay * (strategy === "budget" ? 0.24 : 0.2),
-    soup: budgetPerDay * (strategy === "budget" ? 0.21 : 0.18),
-  };
+
+  let previousMainIngredient: string | null = null;
+  let previousMainMethod: string | null = null;
 
   const days: DayPlan[] = Array.from({ length: input.days }, (_, index) => {
-    const dishes = SLOT_ORDER.map((slot) => {
-      const recipe = pickRecipe(
-        pools[slot],
+    const mainRecipe = pickBestRecipe(pools.main, (recipe) =>
+      scoreMainRecipe({
+        recipe,
         usedIds,
-        preferenceTerms,
+        preferences: preferenceTerms,
         ingredientUsage,
-        slotTarget[slot],
+        targetCost: budgetPerDay * 0.62,
         strategy,
-      );
-      if (!recipe) throw new Error("献立候補の選択に失敗しました。");
+        previousIngredient: previousMainIngredient,
+        previousMethod: previousMainMethod,
+        ingredientCounts: mainIngredientCounts,
+        methodCounts,
+      }),
+    );
 
-      usedIds.add(recipe.id);
-      recipe.ingredients.forEach((ingredient) => {
+    if (!mainRecipe) {
+      throw new Error("主菜候補の選択に失敗しました。");
+    }
+
+    usedIds.add(mainRecipe.id);
+    const mainIngredient = getMainIngredientGroup(mainRecipe);
+    const mainMethod = getCookMethod(mainRecipe);
+    mainIngredientCounts.set(mainIngredient, (mainIngredientCounts.get(mainIngredient) ?? 0) + 1);
+    methodCounts.set(mainMethod, (methodCounts.get(mainMethod) ?? 0) + 1);
+    previousMainIngredient = mainIngredient;
+    previousMainMethod = mainMethod;
+
+    mainRecipe.ingredients.forEach((ingredient) => {
+      ingredientUsage.set(ingredient.id, (ingredientUsage.get(ingredient.id) ?? 0) + 1);
+    });
+
+    const sideRecipe = pickBestRecipe(pools.side, (recipe) =>
+      scoreCompanionRecipe({
+        recipe,
+        mainRecipe,
+        usedIds,
+        preferences: preferenceTerms,
+        ingredientUsage,
+        targetCost: budgetPerDay * 0.2,
+        strategy,
+      }),
+    );
+
+    const soupRecipe = pickBestRecipe(pools.soup, (recipe) =>
+      scoreCompanionRecipe({
+        recipe,
+        mainRecipe,
+        usedIds,
+        preferences: preferenceTerms,
+        ingredientUsage,
+        targetCost: budgetPerDay * 0.18,
+        strategy,
+      }),
+    );
+
+    [sideRecipe, soupRecipe].filter(Boolean).forEach((recipe) => {
+      const safeRecipe = recipe as Recipe;
+      usedIds.add(safeRecipe.id);
+      safeRecipe.ingredients.forEach((ingredient) => {
         ingredientUsage.set(ingredient.id, (ingredientUsage.get(ingredient.id) ?? 0) + 1);
       });
-
-      return toPlannedDish(recipe, input.people);
     });
+
+    const recipeSet = [mainRecipe, sideRecipe, soupRecipe].filter(Boolean) as Recipe[];
+    recipeSet.forEach((recipe) => {
+      usedIds.add(recipe.id);
+    });
+
+    const dishes = recipeSet.map((recipe) => toPlannedDish(recipe, input.people));
+    const mainDish = dishes.find((dish) => dish.slot === "main");
+    if (mainDish) {
+      mainDish.recommendationReason = buildRecommendationReason(mainRecipe, preferenceTerms);
+    }
 
     return {
       day: index + 1,

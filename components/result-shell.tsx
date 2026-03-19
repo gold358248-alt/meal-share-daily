@@ -131,15 +131,12 @@ export function ResultShell({ mode }: { mode: "results" | "shopping" }) {
       <main className="app-shell space-y-5 md:space-y-6">
         <header className={`card-surface animate-rise overflow-hidden transition-opacity ${isRefreshing ? "opacity-80" : "opacity-100"}`}>
           <div className="bg-[linear-gradient(135deg,rgba(241,232,220,0.62),rgba(255,252,248,0.8)_42%,rgba(35,50,68,0.06))] px-5 py-6 sm:px-7">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="eyebrow">{mode === "results" ? "Meal Plan Ready" : "Shopping List Ready"}</p>
                 <h1 className="section-title mt-3">
                   {mode === "results" ? `${plan.input.days}日分の献立ができました` : "このまま買い物に使える形です"}
                 </h1>
-                <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-                  {mode === "results" ? "日ごとの献立と費用を確認して、必要なら条件を調整できます。" : "カテゴリ別に不足食材を整理し、チェック・コピー・共有まで行えます。"}
-                </p>
               </div>
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <span className="rounded-[var(--radius-pill)] bg-[rgba(241,232,220,0.72)] px-4 py-3 text-center font-semibold text-[var(--color-ink)]">{plan.input.people}人 / {plan.input.days}日</span>
@@ -147,25 +144,19 @@ export function ResultShell({ mode }: { mode: "results" | "shopping" }) {
               </div>
             </div>
 
-            <nav className="mt-5 flex flex-wrap gap-2">
-              <Link className={`inline-flex min-h-[46px] items-center justify-center rounded-[var(--radius-control)] px-5 text-sm font-semibold ${mode === "results" ? "bg-[var(--color-ink)] text-white" : "border border-[var(--color-border)] bg-[rgba(255,255,255,0.76)] text-[var(--color-ink-soft)]"}`} href="/results">献立表示</Link>
-              <Link className={`inline-flex min-h-[46px] items-center justify-center rounded-[var(--radius-control)] px-5 text-sm font-semibold ${mode === "shopping" ? "bg-[var(--color-ink)] text-white" : "border border-[var(--color-border)] bg-[rgba(255,255,255,0.76)] text-[var(--color-ink-soft)]"}`} href="/shopping">買い物リスト</Link>
-              <Link className="inline-flex min-h-[46px] items-center justify-center rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[rgba(255,255,255,0.76)] px-5 text-sm font-semibold text-[var(--color-ink-soft)]" href="/planner">条件を修正する</Link>
-            </nav>
-
             {mode === "results" ? (
               <div className="mt-5 grid gap-3 xl:grid-cols-[0.95fr_0.95fr_1.2fr]">
                 <section className="rounded-[1.5rem] border border-[var(--color-border)] bg-[rgba(255,255,255,0.72)] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-clay)]">次のアクション</p>
                   <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">買い物リストへ進む</h2>
-                  <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">不足食材だけを整理した画面へ、そのまま進めます。</p>
+                  <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">不足食材だけをすぐ確認できます。</p>
                   <Link className="primary-button mt-4 w-full !min-h-[48px] !text-sm" href="/shopping">買い物リストへ進む</Link>
                 </section>
 
                 <section className="rounded-[1.5rem] border border-[var(--color-border)] bg-[rgba(255,255,255,0.72)] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-clay)]">保存</p>
                   <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">この献立を保存</h2>
-                  <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">気に入ったプランはホームからすぐ見返せます。</p>
+                  <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">気に入ったら後で見返せます。</p>
                   <button
                     className="secondary-button mt-4 w-full !min-h-[48px] !text-sm"
                     onClick={handleSavePlan}
@@ -177,8 +168,8 @@ export function ResultShell({ mode }: { mode: "results" | "shopping" }) {
 
                 <section className="rounded-[1.5rem] border border-[var(--color-border)] bg-[rgba(255,255,255,0.72)] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-clay)]">再生成</p>
-                  <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">条件を微調整して再生成</h2>
-                  <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">入力条件は引き継いだまま、方向性だけ変えて組み直せます。</p>
+                  <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">条件を少し変える</h2>
+                  <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">気分だけ変えてもう一度見られます。</p>
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
                     <button
                       className="secondary-button !min-h-[48px] !justify-center !px-4 !text-sm"
@@ -211,12 +202,12 @@ export function ResultShell({ mode }: { mode: "results" | "shopping" }) {
           </div>
         </header>
 
-        <BudgetSummary dayCount={plan.days.length} summary={plan.summary} />
+        <BudgetSummary dayCount={plan.days.length} mode={mode} summary={plan.summary} />
 
         {mode === "results" ? (
           <section className="space-y-4">
-            {plan.days.map((day) => (
-              <DayPlanCard day={day} key={day.day} />
+            {plan.days.map((day, index) => (
+              <DayPlanCard day={day} featured={index === 0} key={day.day} />
             ))}
           </section>
         ) : (

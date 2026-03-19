@@ -21,7 +21,7 @@ export function loadLatestPlan() {
   }
 }
 
-export function savePlannerDraft(draft: Record<string, string>) {
+export function savePlannerDraft(draft: Record<string, unknown>) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(draft));
 }
@@ -31,7 +31,7 @@ export function loadPlannerDraft() {
   const raw = window.localStorage.getItem(FORM_DRAFT_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Record<string, string>;
+    return JSON.parse(raw) as Record<string, unknown>;
   } catch {
     return null;
   }

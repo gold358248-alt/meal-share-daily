@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
 import { GlobalNavigation } from "@/components/global-navigation";
-import { PageStatus } from "@/components/page-status";
 import "@/app/globals.css";
 
 const appName = "おうち献立ノート";
@@ -60,25 +58,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="antialiased">
         <div className="min-h-screen pb-24 md:pb-0">
           <GlobalNavigation />
-          <PageStatus />
           {children}
           <footer className="app-shell pt-0">
             <div className="card-surface px-5 py-5 text-sm leading-7 text-[var(--color-ink-soft)] sm:px-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="max-w-2xl">
-                  <p className="font-semibold text-[var(--color-ink)]">{appName}</p>
-                  <p className="mt-2">
-                    家庭向けの簡易献立提案アプリです。医療用途や厳密な栄養管理を目的としたものではありません。
-                    アレルギーがある場合は最終的に食材表示をご自身でも確認してください。
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3 text-sm">
-                  <Link className="footer-link" href="/">トップ</Link>
-                  <Link className="footer-link" href="/planner">条件入力</Link>
-                  <Link className="footer-link" href="/results">献立結果</Link>
-                  <Link className="footer-link" href="/shopping">買い物リスト</Link>
-                </div>
-              </div>
+              <p className="font-semibold text-[var(--color-ink)]">{appName}</p>
+              <p className="mt-2 max-w-2xl">
+                家庭向けの簡易献立提案アプリです。アレルギーや栄養管理が必要な場合は、最終的に食材表示をご自身でも確認してください。
+              </p>
             </div>
           </footer>
         </div>

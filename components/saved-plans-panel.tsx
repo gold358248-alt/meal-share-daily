@@ -15,17 +15,7 @@ export function SavedPlansPanel() {
   }, []);
 
   if (entries.length === 0) {
-    return (
-      <section className="card-surface px-5 py-6 sm:px-8">
-        <p className="eyebrow">Saved Plans</p>
-        <h2 className="mt-3 text-3xl font-heading tracking-[-0.03em] text-[var(--color-ink)]">
-          保存した献立はここにたまっていきます
-        </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          気に入った献立を保存しておくと、あとからすぐ見返せます。まずは条件入力から 1 回作ってみてください。
-        </p>
-      </section>
-    );
+    return null;
   }
 
   return (

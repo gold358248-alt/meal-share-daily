@@ -2,36 +2,30 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { PlanSummary } from "@/types";
 
-export function BudgetSummary({ summary, dayCount }: { summary: PlanSummary; dayCount: number }) {
+export function BudgetSummary({
+  summary,
+  dayCount,
+  mode,
+}: {
+  summary: PlanSummary;
+  dayCount: number;
+  mode: "results" | "shopping";
+}) {
   const savingsLabel = formatCurrency(Math.abs(summary.difference));
 
   return (
     <section className="card-surface overflow-hidden">
-      <div className={`border-b px-5 py-5 sm:px-7 ${summary.withinBudget ? "border-[rgba(125,148,128,0.16)] bg-[linear-gradient(135deg,rgba(237,243,236,0.95),rgba(255,252,248,0.82))]" : "border-[rgba(201,109,70,0.16)] bg-[linear-gradient(135deg,rgba(248,236,232,0.95),rgba(255,252,248,0.82))]"}`}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className={`px-5 py-5 sm:px-7 ${summary.withinBudget ? "bg-[linear-gradient(135deg,rgba(237,243,236,0.95),rgba(255,252,248,0.82))]" : "bg-[linear-gradient(135deg,rgba(248,236,232,0.95),rgba(255,252,248,0.82))]"}`}>
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="eyebrow">Plan Summary</p>
-            <h2 className="mt-3 text-2xl font-heading tracking-[-0.03em] text-[var(--color-ink)] sm:text-3xl">
-              {summary.withinBudget ? "予算内におさまる献立ができました" : "予算超過のため、安い候補へ調整しました"}
+            <p className="eyebrow">Budget</p>
+            <h2 className="mt-2 text-2xl font-heading tracking-[-0.03em] text-[var(--color-ink)]">
+              {summary.withinBudget ? "予算内です" : "予算オーバーです"}
             </h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {summary.withinBudget ? "1日ごとの金額を確認しながら、そのまま買い物リストへ進めます。" : "総額が予算を超えています。条件を見直すか、予算を少し上げると候補が広がります。"}
-            </p>
-            <div className="mt-4 inline-flex rounded-[1.35rem] bg-[rgba(255,255,255,0.72)] px-4 py-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-                  {summary.withinBudget ? "節約できた金額" : "あと必要な予算"}
-                </p>
-                <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[var(--color-ink)]">
-                  {savingsLabel}
-                </p>
-              </div>
-            </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link className="secondary-button !min-h-[46px] !px-5 !text-sm" href="/planner">条件を修正する</Link>
-            <Link className="primary-button !min-h-[46px] !px-5 !text-sm" href="/shopping">買い物リストへ</Link>
-          </div>
+          <span className={`rounded-[var(--radius-pill)] px-4 py-2 text-sm font-semibold ${summary.withinBudget ? "bg-[var(--color-success-bg)] text-[var(--color-ink)]" : "bg-[var(--color-danger-bg)] text-[var(--color-ink)]"}`}>
+            合計 {formatCurrency(summary.totalEstimatedCost)}
+          </span>
         </div>
       </div>
 
@@ -58,6 +52,13 @@ export function BudgetSummary({ summary, dayCount }: { summary: PlanSummary; day
           <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{summary.withinBudget ? "予算内" : "予算オーバー"}</p>
         </div>
       </div>
+
+      {mode === "shopping" ? (
+        <div className="grid gap-2 px-5 pb-5 sm:grid-cols-2 sm:px-7 sm:pb-7">
+          <Link className="primary-button w-full" href="/results">献立を見る</Link>
+          <Link className="secondary-button w-full" href="/planner">条件を変える</Link>
+        </div>
+      ) : null}
 
       {summary.warnings.length > 0 ? (
         <div className="px-5 pb-5 sm:px-7 sm:pb-7">
