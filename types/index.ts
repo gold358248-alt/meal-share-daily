@@ -1,5 +1,40 @@
 export type DishSlot = "main" | "side" | "soup";
 
+export type MainProtein =
+  | "chicken"
+  | "pork"
+  | "fish"
+  | "egg"
+  | "tofu"
+  | "vegetable"
+  | "mixed"
+  | "other";
+
+export type Cuisine = "japanese" | "western" | "chinese" | "curry" | "home";
+
+export type CookingMethod =
+  | "grill"
+  | "stir-fry"
+  | "simmer"
+  | "don"
+  | "curry"
+  | "salad"
+  | "soup"
+  | "mix";
+
+export type FlavorProfile =
+  | "sweet-savory"
+  | "savory"
+  | "mild"
+  | "creamy"
+  | "spicy"
+  | "refreshing"
+  | "miso"
+  | "tomato"
+  | "umami";
+
+export type Richness = "light" | "balanced" | "hearty" | "rich";
+
 export type IngredientCategory =
   | "肉・魚"
   | "野菜"
@@ -26,6 +61,13 @@ export interface Recipe {
   cookTimeMinutes: number;
   estimatedCost: number;
   tags: string[];
+  mainProtein: MainProtein;
+  cuisine: Cuisine;
+  cookingMethod: CookingMethod;
+  flavor: FlavorProfile;
+  richness: Richness;
+  similarGroup: string;
+  moodTags: string[];
   ingredients: Ingredient[];
   steps: string[];
 }
@@ -57,6 +99,12 @@ export interface PlannedDish {
   ingredients: Ingredient[];
   steps: string[];
   tags: string[];
+  mainProtein: MainProtein;
+  cuisine: Cuisine;
+  cookingMethod: CookingMethod;
+  flavor: FlavorProfile;
+  richness: Richness;
+  similarGroup: string;
   moodLabels: string[];
   satisfactionLabel: string;
   easeLabel: string;

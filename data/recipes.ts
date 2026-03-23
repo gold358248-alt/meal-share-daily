@@ -1,4 +1,12 @@
-import { Ingredient, Recipe } from "@/types";
+import {
+  CookingMethod,
+  Cuisine,
+  FlavorProfile,
+  Ingredient,
+  MainProtein,
+  Recipe,
+  Richness,
+} from "@/types";
 
 function ingredient(
   id: string,
@@ -11,9 +19,124 @@ function ingredient(
   return { id, name, quantity, unit, estimatedPrice, category };
 }
 
-function createRecipe(recipe: Omit<Recipe, "estimatedCost">): Recipe {
+type RecipeProfile = Pick<
+  Recipe,
+  "mainProtein" | "cuisine" | "cookingMethod" | "flavor" | "richness" | "similarGroup" | "moodTags"
+>;
+
+type RecipeSeed = Omit<Recipe, "estimatedCost" | keyof RecipeProfile> & Partial<RecipeProfile>;
+
+function deriveMainProtein(recipe: RecipeSeed): MainProtein {
+  const tags = recipe.tags.join(" ");
+  const name = recipe.name;
+
+  if (recipe.slot === "soup" && /(豚|鶏|鮭|さば|魚)/.test(name)) return "mixed";
+  if (/鶏/.test(name) || tags.includes("鶏肉料理")) return "chicken";
+  if (/豚/.test(name) || tags.includes("豚肉料理")) return "pork";
+  if (/(鮭|さば|魚)/.test(name) || tags.includes("魚料理")) return "fish";
+  if (/卵/.test(name) || tags.includes("卵料理")) return "egg";
+  if (/(豆腐|厚揚げ)/.test(name) || tags.includes("豆腐")) return "tofu";
+  if (tags.includes("野菜中心料理")) return "vegetable";
+  return recipe.slot === "soup" ? "other" : "mixed";
+}
+
+function deriveCuisine(recipe: RecipeSeed): Cuisine {
+  const tags = recipe.tags.join(" ");
+  if (tags.includes("中華")) return "chinese";
+  if (tags.includes("洋食") || tags.includes("洋風")) return "western";
+  if (tags.includes("カレー系")) return "curry";
+  if (tags.includes("和食")) return "japanese";
+  return "home";
+}
+
+function deriveCookingMethod(recipe: RecipeSeed): CookingMethod {
+  const name = recipe.name;
+  const tags = recipe.tags.join(" ");
+  if (tags.includes("丼もの")) return "don";
+  if (tags.includes("カレー系")) return "curry";
+  if (recipe.slot === "soup") return "soup";
+  if (/(サラダ|和え|冷ややっこ)/.test(name)) return "salad";
+  if (/炒/.test(name)) return "stir-fry";
+  if (/焼/.test(name)) return "grill";
+  if (/煮/.test(name)) return "simmer";
+  return "mix";
+}
+
+function deriveFlavor(recipe: RecipeSeed): FlavorProfile {
+  const text = `${recipe.name} ${recipe.description} ${recipe.tags.join(" ")}`;
+  if (/クリーム|バター|コーン/.test(text)) return "creamy";
+  if (/みそ/.test(text)) return "miso";
+  if (/カレー|トマト/.test(text)) return "tomato";
+  if (/梅|さっぱり|酢/.test(text)) return "refreshing";
+  if (/麻婆|辛/.test(text)) return "spicy";
+  if (/照り|甘辛|しょうが焼き|丼/.test(text)) return "sweet-savory";
+  if (/塩/.test(text)) return "mild";
+  return "savory";
+}
+
+function deriveRichness(recipe: RecipeSeed): Richness {
+  const text = `${recipe.name} ${recipe.description} ${recipe.tags.join(" ")}`;
+  if (/リッチ|クリーム|バター/.test(text)) return "rich";
+  if (/がっつり|ご飯が進む|満足/.test(text)) return "hearty";
+  if (/さっぱり|ヘルシー/.test(text)) return "light";
+  return "balanced";
+}
+
+function deriveSimilarGroup(recipe: RecipeSeed): string {
+  const text = `${recipe.name} ${recipe.description} ${recipe.tags.join(" ")}`;
+  if (recipe.slot === "soup") return `soup-${deriveCuisine(recipe)}`;
+  if (/(豚.*丼|豚.*しょうが焼き|豚.*甘辛|厚揚げと豚肉の甘辛炒め)/.test(text)) return "pork-sweet-savory";
+  if (/(鶏.*照り|親子丼|鶏.*甘辛)/.test(text)) return "chicken-sweet-savory";
+  if (/カレー/.test(text)) return "curry-rice";
+  if (/麻婆豆腐/.test(text)) return "tofu-spicy";
+  if (/豆腐と野菜のうま塩炒め/.test(text)) return "tofu-light";
+  if (/クリーム/.test(text)) return "chicken-creamy";
+  if (/みそ煮/.test(text)) return "fish-miso";
+  if (/バターしょうゆ/.test(text)) return "fish-savory";
+  return `${deriveMainProtein(recipe)}-${deriveCookingMethod(recipe)}-${deriveFlavor(recipe)}`;
+}
+
+function deriveMoodTags(recipe: RecipeSeed): string[] {
+  const candidates = [
+    { source: "節約", label: "節約" },
+    { source: "時短", label: "時短" },
+    { source: "和食", label: "和食" },
+    { source: "洋食", label: "洋食" },
+    { source: "中華", label: "中華" },
+    { source: "子ども向け", label: "子ども向け" },
+    { source: "大人向け", label: "大人向け" },
+    { source: "野菜多め", label: "野菜多め" },
+    { source: "ヘルシー", label: "ヘルシー" },
+    { source: "がっつり", label: "がっつり" },
+    { source: "リッチ", label: "リッチ" },
+    { source: "ご飯が進む", label: "ごはんが進む" },
+    { source: "家庭的", label: "家庭的" },
+    { source: "定番", label: "定番" },
+    { source: "さっぱり", label: "さっぱり" },
+    { source: "こってり", label: "こってり" },
+    { source: "お酒に合う", label: "お酒に合う" },
+  ];
+
+  return candidates
+    .filter((candidate) => recipe.tags.includes(candidate.source))
+    .map((candidate) => candidate.label)
+    .slice(0, 4);
+}
+
+function createRecipe(recipe: RecipeSeed): Recipe {
+  const profile: RecipeProfile = {
+    mainProtein: recipe.mainProtein ?? deriveMainProtein(recipe),
+    cuisine: recipe.cuisine ?? deriveCuisine(recipe),
+    cookingMethod: recipe.cookingMethod ?? deriveCookingMethod(recipe),
+    flavor: recipe.flavor ?? deriveFlavor(recipe),
+    richness: recipe.richness ?? deriveRichness(recipe),
+    similarGroup: recipe.similarGroup ?? deriveSimilarGroup(recipe),
+    moodTags: recipe.moodTags ?? deriveMoodTags(recipe),
+  };
+
   return {
     ...recipe,
+    ...profile,
     estimatedCost: recipe.ingredients.reduce((total, item) => total + item.estimatedPrice, 0),
   };
 }
@@ -27,6 +150,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 20,
     tags: ["鶏肉料理", "和食", "ご飯が進む", "定番", "家庭的", "子ども向け"],
+    mainProtein: "chicken",
+    cuisine: "japanese",
+    cookingMethod: "grill",
+    flavor: "sweet-savory",
+    richness: "hearty",
+    similarGroup: "chicken-sweet-savory",
+    moodTags: ["定番", "家庭的", "子ども向け", "ごはんが進む"],
     ingredients: [
       ingredient("chicken-thigh", "鶏もも肉", 300, "g", 420, "肉・魚"),
       ingredient("onion", "玉ねぎ", 1, "個", 70, "野菜"),
@@ -48,6 +178,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 18,
     tags: ["豚肉料理", "和食", "時短", "定番", "家庭的", "ご飯が進む"],
+    mainProtein: "pork",
+    cuisine: "japanese",
+    cookingMethod: "stir-fry",
+    flavor: "sweet-savory",
+    richness: "hearty",
+    similarGroup: "pork-sweet-savory",
+    moodTags: ["時短", "定番", "家庭的", "ごはんが進む"],
     ingredients: [
       ingredient("pork-slice", "豚こま肉", 280, "g", 380, "肉・魚"),
       ingredient("onion", "玉ねぎ", 1, "個", 70, "野菜"),
@@ -69,6 +206,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 30,
     tags: ["カレー系", "野菜中心料理", "作り置き", "がっつり", "家庭的"],
+    mainProtein: "chicken",
+    cuisine: "curry",
+    cookingMethod: "curry",
+    flavor: "tomato",
+    richness: "hearty",
+    similarGroup: "curry-rice",
+    moodTags: ["がっつり", "家庭的", "野菜多め"],
     ingredients: [
       ingredient("potato", "じゃがいも", 2, "個", 120, "野菜"),
       ingredient("carrot", "にんじん", 1, "本", 55, "野菜"),
@@ -91,6 +235,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 16,
     tags: ["丼もの", "鶏肉料理", "卵料理", "時短", "家庭的", "子ども向け"],
+    mainProtein: "chicken",
+    cuisine: "japanese",
+    cookingMethod: "don",
+    flavor: "sweet-savory",
+    richness: "hearty",
+    similarGroup: "chicken-sweet-savory",
+    moodTags: ["時短", "家庭的", "子ども向け", "ごはんが進む"],
     ingredients: [
       ingredient("chicken-thigh", "鶏もも肉", 220, "g", 308, "肉・魚"),
       ingredient("egg", "卵", 3, "個", 90, "卵・乳"),
@@ -109,6 +260,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 15,
     tags: ["丼もの", "豚肉料理", "時短", "ご飯が進む", "がっつり"],
+    mainProtein: "pork",
+    cuisine: "japanese",
+    cookingMethod: "don",
+    flavor: "sweet-savory",
+    richness: "hearty",
+    similarGroup: "pork-sweet-savory",
+    moodTags: ["時短", "がっつり", "ごはんが進む"],
     ingredients: [
       ingredient("pork-slice", "豚こま肉", 240, "g", 325, "肉・魚"),
       ingredient("onion", "玉ねぎ", 1, "個", 70, "野菜"),
@@ -126,6 +284,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 17,
     tags: ["野菜中心料理", "ヘルシー", "さっぱり", "豆腐", "家庭的"],
+    mainProtein: "tofu",
+    cuisine: "home",
+    cookingMethod: "stir-fry",
+    flavor: "mild",
+    richness: "light",
+    similarGroup: "tofu-light",
+    moodTags: ["ヘルシー", "さっぱり", "野菜多め", "家庭的"],
     ingredients: [
       ingredient("tofu", "木綿豆腐", 1, "丁", 70, "豆腐・乾物"),
       ingredient("cabbage", "キャベツ", 0.25, "玉", 65, "野菜"),
@@ -148,6 +313,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 22,
     tags: ["カレー系", "豚肉料理", "時短", "作り置き", "がっつり", "ご飯が進む"],
+    mainProtein: "pork",
+    cuisine: "curry",
+    cookingMethod: "curry",
+    flavor: "spicy",
+    richness: "hearty",
+    similarGroup: "curry-rice",
+    moodTags: ["時短", "がっつり", "ごはんが進む"],
     ingredients: [
       ingredient("ground-pork", "豚ひき肉", 220, "g", 300, "肉・魚"),
       ingredient("onion", "玉ねぎ", 1, "個", 70, "野菜"),
@@ -165,6 +337,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 16,
     tags: ["魚料理", "和食", "リッチ", "定番", "ご飯が進む"],
+    mainProtein: "fish",
+    cuisine: "japanese",
+    cookingMethod: "grill",
+    flavor: "umami",
+    richness: "rich",
+    similarGroup: "fish-savory",
+    moodTags: ["リッチ", "定番", "ごはんが進む"],
     ingredients: [
       ingredient("salmon", "鮭", 2, "切れ", 420, "肉・魚"),
       ingredient("butter", "バター", 10, "g", 35, "卵・乳"),
@@ -185,6 +364,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 18,
     tags: ["中華", "豆腐", "がっつり", "大人向け", "ご飯が進む"],
+    mainProtein: "tofu",
+    cuisine: "chinese",
+    cookingMethod: "simmer",
+    flavor: "spicy",
+    richness: "hearty",
+    similarGroup: "tofu-spicy",
+    moodTags: ["中華", "がっつり", "大人向け", "ごはんが進む"],
     ingredients: [
       ingredient("tofu", "木綿豆腐", 1, "丁", 70, "豆腐・乾物"),
       ingredient("ground-pork", "豚ひき肉", 160, "g", 218, "肉・魚"),
@@ -207,6 +393,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 24,
     tags: ["鶏肉料理", "洋食", "リッチ", "家庭的", "子ども向け"],
+    mainProtein: "chicken",
+    cuisine: "western",
+    cookingMethod: "simmer",
+    flavor: "creamy",
+    richness: "rich",
+    similarGroup: "chicken-creamy",
+    moodTags: ["洋食", "リッチ", "家庭的", "子ども向け"],
     ingredients: [
       ingredient("chicken-thigh", "鶏もも肉", 260, "g", 364, "肉・魚"),
       ingredient("milk", "牛乳", 220, "ml", 62, "卵・乳"),
@@ -229,6 +422,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 22,
     tags: ["魚料理", "和食", "家庭的", "大人向け", "ご飯が進む"],
+    mainProtein: "fish",
+    cuisine: "japanese",
+    cookingMethod: "simmer",
+    flavor: "miso",
+    richness: "balanced",
+    similarGroup: "fish-miso",
+    moodTags: ["家庭的", "大人向け", "ごはんが進む"],
     ingredients: [
       ingredient("mackerel", "さば", 2, "切れ", 360, "肉・魚"),
       ingredient("ginger", "しょうが", 1, "片", 25, "野菜"),
@@ -250,6 +450,13 @@ export const RECIPES: Recipe[] = [
     baseServings: 2,
     cookTimeMinutes: 17,
     tags: ["豚肉料理", "豆腐", "家庭的", "ご飯が進む", "節約"],
+    mainProtein: "pork",
+    cuisine: "home",
+    cookingMethod: "stir-fry",
+    flavor: "sweet-savory",
+    richness: "balanced",
+    similarGroup: "pork-sweet-savory",
+    moodTags: ["家庭的", "節約", "ごはんが進む"],
     ingredients: [
       ingredient("atsuage", "厚揚げ", 1, "パック", 120, "豆腐・乾物"),
       ingredient("pork-slice", "豚こま肉", 180, "g", 244, "肉・魚"),
